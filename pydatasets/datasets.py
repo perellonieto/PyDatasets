@@ -1,10 +1,8 @@
 __docformat__ = 'restructedtext en'
 import warnings
 from sklearn.datasets import fetch_mldata
-from sklearn.cross_validation import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold
 import numpy as np
-
-from dataset import Dataset
 
 __author__ = "Miquel Perello Nieto"
 __credits__ = ["Miquel Perello Nieto"]
@@ -15,8 +13,127 @@ __maintainer__ = "Miquel Perello Nieto"
 __email__ = "miquel@perellonieto.com"
 __status__ = "Development"
 
-import urllib2
+import urllib
 from os.path import isfile
+
+datasets_binary = ['credit-approval', 'diabetes',
+            'german', 'heart-statlog', 'hepatitis',
+            'horse', 'ionosphere', 'lung-cancer',
+            'mushroom', 'scene-classification',
+            'sonar', 'spambase', 'tic-tac',
+            'wdbc', 'wpbc']
+
+datasets_li2014 = ['abalone', 'balance-scale', 'credit-approval',
+            'dermatology', 'german', 'heart-statlog', 'hepatitis',
+            'horse', 'ionosphere', 'lung-cancer', 'libras-movement',
+            'mushroom', 'diabetes', 'landsat-satellite', 'segment',
+            'spambase', 'wdbc', 'wpbc']
+
+datasets_hempstalk2008 = ['diabetes',
+        'heart-statlog', 'ionosphere', 'iris', 'letter',
+        'mfeat-karhunen', 'mfeat-morphological', 'mfeat-zernike',
+        'optdigits', 'pendigits', 'sonar', 'vehicle', 'waveform-5000']
+
+datasets_others = [ 'diabetes', 'heart-statlog',
+        'ionosphere', 'iris', 'letter', 'mfeat-karhunen',
+        'mfeat-morphological', 'mfeat-zernike', 'optdigits',
+        'pendigits', 'sonar', 'vehicle', 'waveform-5000',
+        'scene-classification', 'tic-tac', 'autos', 'car', 'cleveland',
+        'dermatology', 'flare', 'page-blocks', 'segment', 'shuttle',
+        'vowel', 'abalone', 'balance-scale', 'credit-approval',
+        'german', 'hepatitis', 'lung-cancer', 'ecoli', 'glass', 'yeast', 'zoo']
+
+datasets_big = ['abalone', 'car', 'flare', 'german', 'landsat-satellite',
+                'letter', 'mfeat-karhunen', 'mfeat-morphological',
+                'mfeat-zernike', 'mushroom', 'optdigits', 'page-blocks',
+                'pendigits', 'scene-classification', 'segment', 'shuttle',
+                'spambase', 'waveform-5000', 'yeast']
+
+datasets_small_example = ['iris', 'spambase', 'autos']
+
+datasets_all = list(set(datasets_li2014 + datasets_hempstalk2008 +
+                        datasets_others + datasets_binary))
+
+datasets_non_binary = [d for d in datasets_all if d not in datasets_binary]
+
+class Dataset(object):
+    def __init__(self, name, data, target):
+        self.name = name
+        self._data = self.standardize_data(data)
+        self._target, self._classes, self._names, self._counts = self.standardize_targets(target)
+
+    def standardize_data(self, data):
+        new_data = data.astype(float)
+        data_mean = new_data.mean(axis=0)
+        data_std = new_data.std(axis=0)
+        data_std[data_std == 0] = 1
+        return (new_data-data_mean)/data_std
+
+    def standardize_targets(self, target):
+        target = np.squeeze(target)
+        names, counts = np.unique(target, return_counts=True)
+        new_target = np.empty_like(target, dtype=int)
+        for i, name in enumerate(names):
+            new_target[target==name] = i
+        classes = range(len(names))
+        return new_target, classes, names, counts
+
+    def separate_sets(self, x, y, test_fold_id, test_folds):
+        x_test = x[test_folds == test_fold_id, :]
+        y_test = y[test_folds == test_fold_id]
+
+        x_train = x[test_folds != test_fold_id, :]
+        y_train = y[test_folds != test_fold_id]
+        return [x_train, y_train, x_test, y_test]
+
+    def reduce_number_instances(self, proportion=0.1):
+        skf = StratifiedKFold(n_splits=int(1.0/proportion))
+        test_folds = skf.test_folds
+        train_idx, test_idx = next(iter(skf.split(X=self._data,
+                                                  y=self._target)))
+        self._data, self._target = self._data[test_idx], self._target[test_idx]
+
+    @property
+    def target(self):
+        return self._target
+
+    #@target.setter
+    #def target(self, new_value):
+    #    self._target = new_value
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def names(self):
+        return self._names
+
+    @property
+    def classes(self):
+        return self._classes
+
+    @property
+    def counts(self):
+        return self._counts
+
+    def print_summary(self):
+        print(self)
+
+    @property
+    def n_classes(self):
+        return len(self._classes)
+
+    def __str__(self):
+        return("Name = {}\n"
+               "Data shape = {}\n"
+               "Target shape = {}\n"
+               "Target classes = {}\n"
+               "Target labels = {}\n"
+               "Target counts = {}").format(self.name, self.data.shape,
+                                            self.target.shape, self.classes,
+                                            self.names, self.counts)
+
 
 class Data(object):
     uci_nan = -2147483648
@@ -297,7 +414,10 @@ class Data(object):
 
             # TODO this dataset is divided in two files, see more elegant way
             # to add it
-            mldata = fetch_mldata('uci-20070111 solar-flare_1')
+            try:
+                mldata = fetch_mldata('uci-20070111 solar-flare_1')
+            except Exception:
+                return None
 
             target = np.hstack((target, mldata.target))
             data = np.vstack((data, mldata['int0'].T))
@@ -378,7 +498,7 @@ class Data(object):
             (array-like, shape = [n_samples, n_features]): floats.
         """
         first_column = True
-        for key, submatrix in mldata.iteritems():
+        for key, submatrix in mldata.items():
             if key not in exclude and type(submatrix) == np.ndarray:
                 new_submatrix = np.copy(submatrix)
 
@@ -457,5 +577,90 @@ class Data(object):
             dataset = self.datasets[name]
             dataset.print_summary()
         else:
-            for name, dataset in self.datasets.iteritems():
+            for name, dataset in self.datasets.items():
                 dataset.print_summary()
+
+def test_datasets(dataset_names):
+    from sklearn.svm import SVC
+    data = Data(dataset_names=dataset_names)
+
+    def separate_sets(x, y, test_fold_id, test_folds):
+        x_test = x[test_folds == test_fold_id, :]
+        y_test = y[test_folds == test_fold_id]
+
+        x_train = x[test_folds != test_fold_id, :]
+        y_train = y[test_folds != test_fold_id]
+        return [x_train, y_train, x_test, y_test]
+
+    n_folds = 2
+    accuracies = {}
+    for name, dataset in data.datasets.items():
+        dataset.print_summary()
+        skf = StratifiedKFold(dataset.target, n_folds=n_folds, shuffle=True)
+        test_folds = skf.test_folds
+        accuracies[name] = np.zeros(n_folds)
+        test_fold = 0
+        for train_idx, test_idx in skf.split(X=dataset.data, y=dataset.target):
+            x_train, y_train = dataset.data[train_idx], dataset.target[train_idx]
+            x_test, y_test = dataset.data[test_idx], dataset.target[test_idx]
+
+            svc = SVC(C=1.0, kernel='rbf', degree=1, tol=0.01)
+            svc.fit(x_train, y_train)
+            prediction = svc.predict(x_test)
+            accuracies[name][test_fold] = 100*np.mean((prediction == y_test))
+            print("Acc = {0:.2f}%".format(accuracies[name][test_fold]))
+            test_fold += 1
+    return accuracies
+
+def test():
+    datasets_li2014 = ['abalone', 'balance-scale', 'credit-approval',
+            'dermatology', 'ecoli', 'german', 'heart-statlog', 'hepatitis',
+            'horse', 'ionosphere', 'lung-cancer', 'libras-movement',
+            'mushroom', 'diabetes', 'landsat-satellite', 'segment',
+            'spambase', 'wdbc', 'wpbc', 'yeast']
+
+    datasets_hempstalk2008 = ['diabetes', 'ecoli', 'glass',
+            'heart-statlog', 'ionosphere', 'iris', 'letter',
+            'mfeat-karhunen', 'mfeat-morphological', 'mfeat-zernike',
+            'optdigits', 'pendigits', 'sonar', 'vehicle', 'waveform-5000']
+
+    datasets_others = [ 'diabetes', 'ecoli', 'glass', 'heart-statlog',
+            'ionosphere', 'iris', 'letter', 'mfeat-karhunen',
+            'mfeat-morphological', 'mfeat-zernike', 'optdigits',
+            'pendigits', 'sonar', 'vehicle', 'waveform-5000',
+            'scene-classification', 'tic-tac', 'autos', 'car', 'cleveland',
+            'dermatology', 'flare', 'page-blocks', 'segment', 'shuttle',
+            'vowel', 'zoo', 'abalone', 'balance-scale', 'credit-approval',
+            'german', 'hepatitis', 'lung-cancer']
+
+    # Datasets that we can add but need to be reduced
+    datasets_to_add = ['MNIST']
+
+    dataset_names = list(set(datasets_li2014 + datasets_hempstalk2008 +
+        datasets_others))
+
+    accuracies = test_datasets(dataset_names)
+    for i, name in enumerate(dataset_names):
+        if name in accuracies.keys():
+            print("{}. {} Acc = {:.2f}% +- {:.2f}".format(
+                  i+1, name, accuracies[name].mean(), accuracies[name].std()))
+        else:
+            print("{}. {}  Not Available yet".format(i+1, name))
+
+
+class MLData(Data):
+    def __init__(self, data_home='./datasets/', load_all=False):
+        warnings.simplefilter('always', DeprecationWarning)
+        warnings.warn(('This Class is going to be deprecated in a future '
+                       'version, please use cwc.data_wrappers.Data instead.'),
+                      DeprecationWarning)
+        self.data_home = data_home
+        self.datasets = {}
+
+        if load_all:
+            for key in MLData.mldata_names.keys():
+                self.datasets[key] = self.get_dataset(key)
+
+
+if __name__=='__main__':
+    test()
