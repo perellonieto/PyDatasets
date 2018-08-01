@@ -2,7 +2,15 @@
 
 Wrapper to download and work with datasets.
 
-# How to load iris dataset
+## Installation
+
+  git clone git@github.com:perellonieto/PyDatasets.git
+  cd PyDatasets
+  python3.6 -m venv venv
+  source venv/bin/activate
+  pip install -r requirements
+
+## How to load iris dataset
 
 This is an example for loading the iris dataset (each feature is normalised
 with mean 0 and standard deviation 1).
@@ -26,7 +34,7 @@ You can access then to the data and target
   data.datasets['iris'].data
   data.datasets['iris'].target
 
-# How to load multiple non-binary datasets
+## How to load multiple non-binary datasets
 
   from pydatasets.datasets import Data
   from pydatasets.datasets import datasets_non_binary
