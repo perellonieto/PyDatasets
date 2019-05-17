@@ -2,6 +2,7 @@ __docformat__ = 'restructedtext en'
 import warnings
 from sklearn.datasets import fetch_mldata
 from sklearn.model_selection import StratifiedKFold
+from sklearn.utils import shuffle as skl_shuffle
 import numpy as np
 
 __author__ = "Miquel Perello Nieto"
@@ -57,10 +58,16 @@ datasets_all = list(set(datasets_li2014 + datasets_hempstalk2008 +
 datasets_non_binary = [d for d in datasets_all if d not in datasets_binary]
 
 class Dataset(object):
-    def __init__(self, name, data, target):
+    def __init__(self, name, data, target, shuffle=False, random_state=None):
         self.name = name
         self._data = self.standardize_data(data)
         self._target, self._classes, self._names, self._counts = self.standardize_targets(target)
+        if shuffle:
+            self.shuffle(random_state=random_state)
+
+    def shuffle(self, random_state=None):
+        self._data, self._target = skl_shuffle(self._data, self._target,
+                                               random_state=random_state)
 
     def standardize_data(self, data):
         new_data = data.astype(float)
@@ -76,6 +83,10 @@ class Dataset(object):
         for i, name in enumerate(names):
             new_target[target==name] = i
         classes = range(len(names))
+        if type(names[0]) is np.ndarray:
+            names = [''.join(name) for name in names]
+        else:
+            names = [str(name) for name in names]
         return new_target, classes, names, counts
 
     def separate_sets(self, x, y, test_fold_id, test_folds):
@@ -123,6 +134,14 @@ class Dataset(object):
     @property
     def n_classes(self):
         return len(self._classes)
+
+    @property
+    def n_features(self):
+        return self._data.shape[1]
+
+    @property
+    def n_samples(self):
+        return self._data.shape[0]
 
     def __str__(self):
         return("Name = {}\n"
@@ -191,7 +210,8 @@ class Data(object):
                     'hypothyroid':'uci-20070111 hypothyroid'
             }
 
-    def __init__(self, data_home='./datasets/', dataset_names=None, load_all=False):
+    def __init__(self, data_home='./datasets/', dataset_names=None,
+                 load_all=False, shuffle=True, random_state=None):
         self.data_home = data_home
         self.datasets = {}
 
@@ -200,6 +220,10 @@ class Data(object):
             self.load_datasets_by_name(dataset_names)
         elif dataset_names is not None:
             self.load_datasets_by_name(dataset_names)
+
+        if shuffle:
+            for name in self.datasets.keys():
+                self.datasets[name].shuffle(random_state=random_state)
 
 
     def load_datasets_by_name(self, names):
