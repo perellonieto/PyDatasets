@@ -1,4 +1,5 @@
 from pydatasets.datasets import Data
 
-data = Data(dataset_names=['iris'])
-print(data.datasets['iris'])
+name = 'turnout'
+data = Data(dataset_names=[name])
+print(data.datasets[name])

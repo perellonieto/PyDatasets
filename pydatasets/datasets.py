@@ -5,6 +5,8 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.utils import shuffle as skl_shuffle
 import numpy as np
 
+from pydataset import data as pydataset_data
+
 __author__ = "Miquel Perello Nieto"
 __credits__ = ["Miquel Perello Nieto"]
 
@@ -58,8 +60,12 @@ datasets_all = list(set(datasets_li2014 + datasets_hempstalk2008 +
 datasets_non_binary = [d for d in datasets_all if d not in datasets_binary]
 
 class Dataset(object):
-    def __init__(self, name, data, target, shuffle=False, random_state=None):
+    def __init__(self, name, data, target, feature_names=None,
+                 shuffle=False, random_state=None):
         self.name = name
+        if feature_names is None:
+            feature_names = range(len(data[0]))
+        self.feature_names = feature_names
         self._data = self.standardize_data(data)
         self._target, self._classes, self._names, self._counts = self.standardize_targets(target)
         if shuffle:
@@ -146,22 +152,29 @@ class Dataset(object):
     def __str__(self):
         return("Name = {}\n"
                "Data shape = {}\n"
+               "Feature names = {}\n"
                "Target shape = {}\n"
                "Target classes = {}\n"
                "Target labels = {}\n"
                "Target counts = {}").format(self.name, self.data.shape,
+                                            self.feature_names,
                                             self.target.shape, self.classes,
                                             self.names, self.counts)
 
 
 class Data(object):
     uci_nan = -2147483648
-    mldata_names = {'diabetes':'diabetes',
+    # TODO mldata is not working anymore, I need to change each of this calls
+    # to download it from a copy in my repo with loadmat('sonar.mat')
+    pydataset_names = ['iris', 'aids', 'turnout']
+    
+    pydataset_not_working = ['diabetes']
+
+    mldata_names = {
                     'ecoli':'uci-20070111 ecoli',
                     'glass':'glass',
                     'heart-statlog':'datasets-UCI heart-statlog',
                     'ionosphere':'ionosphere',
-                    'iris':'iris',
                     'letter':'letter',
                     'mfeat-karhunen':'uci-20070111 mfeat-karhunen',
                     'mfeat-morphological':'uci-20070111 mfeat-morphological',
@@ -210,7 +223,7 @@ class Data(object):
                     'hypothyroid':'uci-20070111 hypothyroid'
             }
 
-    def __init__(self, data_home='./datasets/', dataset_names=None,
+    def __init__(self, dataset_names=None, data_home='./datasets/',
                  load_all=False, shuffle=True, random_state=None):
         self.data_home = data_home
         self.datasets = {}
@@ -252,6 +265,8 @@ class Data(object):
     def get_dataset_by_name(self, name):
         if name in Data.mldata_names.keys():
             return self.get_mldata_dataset(name)
+        elif name in Data.pydataset_names:
+            return self.get_pydataset_dataset(name)
         elif name == 'spambase':
             file_path = self.data_home+'spambase.data'
             url = "https://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data"
@@ -334,6 +349,33 @@ class Data(object):
             return None
         return Dataset(name, data, target)
 
+    def get_pydataset_dataset(self, name):
+        try:
+            data = pydataset_data(name)
+        except Exception as e:
+            print(e)
+            return None
+
+        feature_names = None
+        if name == 'iris':
+            target = data['Species'].values
+            feature_names = ['Sepal.Length', 'Sepal.Width', 'Petal.Length',
+                             'Petal.Width']
+            data = data[feature_names].values
+        elif name == 'aids':
+            target = data['adult'].values
+            feature_names = ['infect', 'induct']
+            data = data[feature_names].values
+        elif name == 'turnout':
+            target = data['vote'].values
+            feature_names = ['race', 'age', 'educate', 'income']
+            data['race'] = data['race'].astype('category')
+            data['race'] = data['race'].cat.codes
+            data = data[feature_names].values
+        else:
+            ValueError('Dataset ' + name + 'not implemented yet.')
+
+        return Dataset(name, data, target, feature_names)
 
     def get_mldata_dataset(self, name):
         try:
