@@ -7,15 +7,6 @@ import numpy as np
 
 from pydataset import data as pydataset_data
 
-__author__ = "Miquel Perello Nieto"
-__credits__ = ["Miquel Perello Nieto"]
-
-__license__ = "GPL"
-__version__ = "1.0"
-__maintainer__ = "Miquel Perello Nieto"
-__email__ = "miquel@perellonieto.com"
-__status__ = "Development"
-
 import urllib
 from os.path import isfile
 
