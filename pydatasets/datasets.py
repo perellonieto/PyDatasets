@@ -1,6 +1,6 @@
 __docformat__ = 'restructedtext en'
 import warnings
-from sklearn.datasets import fetch_mldata
+from sklearn.datasets import fetch_openml
 from sklearn.model_selection import StratifiedKFold
 from sklearn.utils import shuffle as skl_shuffle
 import numpy as np
@@ -161,8 +161,26 @@ class Data(object):
     
     pydataset_not_working = ['diabetes']
 
-    mldata_names = {
-                    'ecoli':'uci-20070111 ecoli',
+    openml_names = {
+                    'ecoli':'ecoli',
+                    }
+
+    openml_not_working = {
+                    #'spam':'uci-20070111 spambase', # not working
+                    'mushroom':'uci-20070111 mushroom',
+                    # To be added:
+                    'breast-cancer-w':'uci-20070111 wisconsin',
+                    # Need preprocessing :
+                    'auslan':'',
+                    # Needs to be generated
+                    'led7digit':'',
+                    'yeast':'',
+                    # Needs permission from ml-repository@ics.uci.edu
+                    'lymphography':'',
+                    # HTTP Error 500 in mldata.org
+                    'satimage':'satimage',
+                    'nursery':'uci-20070111 nursery',
+                    'hypothyroid':'uci-20070111 hypothyroid'
                     'glass':'glass',
                     'heart-statlog':'datasets-UCI heart-statlog',
                     'ionosphere':'ionosphere',
@@ -194,24 +212,6 @@ class Data(object):
                     'german':'German IDA',
                     'hepatitis':'uci-20070111 hepatitis',
                     'lung-cancer':'Lung Cancer (Michigan)'
-                    }
-
-    mldata_not_working = {
-                    #'spam':'uci-20070111 spambase', # not working
-                    'mushroom':'uci-20070111 mushroom',
-                    # To be added:
-                    'breast-cancer-w':'uci-20070111 wisconsin',
-                    # Need preprocessing :
-                    'auslan':'',
-                    # Needs to be generated
-                    'led7digit':'',
-                    'yeast':'',
-                    # Needs permission from ml-repository@ics.uci.edu
-                    'lymphography':'',
-                    # HTTP Error 500 in mldata.org
-                    'satimage':'satimage',
-                    'nursery':'uci-20070111 nursery',
-                    'hypothyroid':'uci-20070111 hypothyroid'
             }
 
     def __init__(self, dataset_names=None, data_home='./datasets/',
@@ -220,7 +220,7 @@ class Data(object):
         self.datasets = {}
 
         if load_all:
-            dataset_names = Data.mldata_names.keys()
+            dataset_names = Data.openml_names.keys()
             self.load_datasets_by_name(dataset_names)
         elif dataset_names is not None:
             self.load_datasets_by_name(dataset_names)
@@ -254,8 +254,8 @@ class Data(object):
             self.save_file_content(file_path, content)
 
     def get_dataset_by_name(self, name):
-        if name in Data.mldata_names.keys():
-            return self.get_mldata_dataset(name)
+        if name in Data.openml_names.keys():
+            return self.get_openml_dataset(name)
         elif name in Data.pydataset_names:
             return self.get_pydataset_dataset(name)
         elif name == 'spambase':
@@ -368,10 +368,11 @@ class Data(object):
 
         return Dataset(name, data, target, feature_names)
 
-    def get_mldata_dataset(self, name):
+    def get_openml_dataset(self, name):
         try:
-            mldata = fetch_mldata(Data.mldata_names[name], data_home=self.data_home)
-        except Exception:
+            openml = fetch_openml(Data.openml_names[name], data_home=self.data_home)
+        except Exception as e:
+            print(e)
             return None
 
         # TODO adapt code using this method
@@ -385,153 +386,153 @@ class Data(object):
         #           'mfeat-zernike': lambda x: x.target.T, x.data,
         #           'mfeat-morphological': lambda x: x.target.T, x.data,
         #           'waveform-5000': lambda x: x.target.T, x.data}
-        #data, target = MAPPING[name](mldata)
+        #data, target = MAPPING[name](openml)
 
         if name=='ecoli':
-            data = mldata.target.T
-            target = mldata.data
+            data = openml.data.values
+            target = openml.target
         elif name=='diabetes':
-            data = mldata.data
-            target = mldata.target
+            data = openml.data
+            target = openml.target
         elif name=='optdigits':
-            data = mldata.data[:,:-1]
-            target = mldata.data[:,-1]
+            data = openml.data[:,:-1]
+            target = openml.data[:,-1]
         elif name=='pendigits':
-            data = mldata.data[:,:-1]
-            target = mldata.data[:,-1]
+            data = openml.data[:,:-1]
+            target = openml.data[:,-1]
         elif name=='waveform-5000':
-            data = mldata.target.T
-            target = mldata.data
+            data = openml.target.T
+            target = openml.data
         elif name=='heart-statlog':
-            data = np.hstack([mldata['target'].T, mldata.data, mldata['int2'].T])
-            target = mldata['class']
+            data = np.hstack([openml['target'].T, openml.data, openml['int2'].T])
+            target = openml['class']
         elif name=='mfeat-karhunen':
-            data = mldata.target.T
-            target = mldata.data
+            data = openml.target.T
+            target = openml.data
         elif name=='mfeat-zernike':
-            data = mldata.target.T
-            target = mldata.data
+            data = openml.target.T
+            target = openml.data
         elif name=='mfeat-morphological':
-            data = mldata.target.T
-            target = mldata.data
+            data = openml.target.T
+            target = openml.data
         elif name=='scene-classification':
-            data = mldata.data
-            target = mldata.target.toarray()
+            data = openml.data
+            target = openml.target.toarray()
             target = target.transpose()[:,4]
         elif name=='tic-tac':
-            n = np.alen(mldata.data)
-            data = np.hstack((mldata.data.reshape(n,1),
-                                     np.vstack([mldata[feature] for feature in
-                                                mldata.keys() if 'square' in
+            n = np.alen(openml.data)
+            data = np.hstack((openml.data.reshape(n,1),
+                                     np.vstack([openml[feature] for feature in
+                                                openml.keys() if 'square' in
                                                 feature]).T,
-                                     mldata.target.reshape(n,1)))
+                                     openml.target.reshape(n,1)))
             for i, value in enumerate(np.unique(data)):
                 data[data==value] = i
             data = data.astype(float)
-            target = mldata.Class.reshape(n,1)
+            target = openml.Class.reshape(n,1)
         elif name=='autos':
-            target = mldata.int5[5,:].reshape(-1,1)
+            target = openml.int5[5,:].reshape(-1,1)
             data = np.hstack((
-                      mldata['target'].reshape(-1,1),
-                      self.nominal_to_float(mldata['data'].reshape(-1,1)),
-                      self.nominal_to_float(mldata['fuel-type'].reshape(-1,1)),
-                      self.nominal_to_float(mldata['aspiration'].reshape(-1,1)),
-                      self.nominal_to_float(mldata['num-of-doors'].reshape(-1,1)),
-                      self.nominal_to_float(mldata['body-style'].reshape(-1,1)),
-                      self.nominal_to_float(mldata['drive-wheels'].reshape(-1,1)),
-                      self.nominal_to_float(mldata['engine-location'].reshape(-1,1)),
-                      mldata['double1'].T.reshape(-1,4),
-                      mldata['int2'].reshape(-1,1),
-                      self.nominal_to_float(mldata['engine-type'].reshape(-1,1)),
-                      self.nominal_to_float(mldata['num-of-cylinders'].reshape(-1,1)),
-                      mldata['int3'].reshape(-1,1),
-                      self.nominal_to_float(mldata['fuel-system'].reshape(-1,1)),
-                      mldata['double4'].T.reshape(-1,3),
-                      mldata['int5'][:-1,:].T.reshape(-1,5)
+                      openml['target'].reshape(-1,1),
+                      self.nominal_to_float(openml['data'].reshape(-1,1)),
+                      self.nominal_to_float(openml['fuel-type'].reshape(-1,1)),
+                      self.nominal_to_float(openml['aspiration'].reshape(-1,1)),
+                      self.nominal_to_float(openml['num-of-doors'].reshape(-1,1)),
+                      self.nominal_to_float(openml['body-style'].reshape(-1,1)),
+                      self.nominal_to_float(openml['drive-wheels'].reshape(-1,1)),
+                      self.nominal_to_float(openml['engine-location'].reshape(-1,1)),
+                      openml['double1'].T.reshape(-1,4),
+                      openml['int2'].reshape(-1,1),
+                      self.nominal_to_float(openml['engine-type'].reshape(-1,1)),
+                      self.nominal_to_float(openml['num-of-cylinders'].reshape(-1,1)),
+                      openml['int3'].reshape(-1,1),
+                      self.nominal_to_float(openml['fuel-system'].reshape(-1,1)),
+                      openml['double4'].T.reshape(-1,3),
+                      openml['int5'][:-1,:].T.reshape(-1,5)
                               ))
             data, target = self.remove_rows_with_missing_values(data, target)
         elif name=='car':
-            target = mldata['class']
+            target = openml['class']
             feature_names = ['data', 'target', 'doors', 'persons', 'lug_boot',
                              'safety']
             data = np.hstack([
-                    self.nominal_to_float(mldata[f_name].reshape(-1,1))
+                    self.nominal_to_float(openml[f_name].reshape(-1,1))
                         for f_name in feature_names])
         elif name=='cleveland':
-            target = mldata.int2.reshape(-1,1)
-            data = np.hstack((mldata.target.T, mldata.data))
+            target = openml.int2.reshape(-1,1)
+            data = np.hstack((openml.target.T, openml.data))
             data, target = self.remove_rows_with_missing_values(data, target)
         elif name=='dermatology':
-            target = mldata.data[:,-1]
-            data = mldata.data[:,:-1]
+            target = openml.data[:,-1]
+            data = openml.data[:,:-1]
             data, target = self.remove_rows_with_missing_values(data, target)
         elif name=='flare':
-            target = mldata.target
-            data = mldata['int0'].T
+            target = openml.target
+            data = openml['int0'].T
 
             # TODO this dataset is divided in two files, see more elegant way
             # to add it
             try:
-                mldata = fetch_mldata('uci-20070111 solar-flare_1')
+                openml = fetch_openml('uci-20070111 solar-flare_1')
             except Exception:
                 return None
 
-            target = np.hstack((target, mldata.target))
-            data = np.vstack((data, mldata['int0'].T))
+            target = np.hstack((target, openml.target))
+            data = np.vstack((data, openml['int0'].T))
         elif name=='nursery':
             raise Exception('Not currently available')
         elif name=='page-blocks':
-            data = np.hstack((mldata['target'].T, mldata['data'],
-                              mldata['int2'].T))
+            data = np.hstack((openml['target'].T, openml['data'],
+                              openml['int2'].T))
             target = data[:,-1]
             data = data[:,:-1]
         elif name=='satimage':
             raise Exception('Not currently available')
         elif name=='segment':
-            target = mldata['class'].reshape(-1,1)
-            data = np.hstack((mldata['int2'].T, mldata['data'],
-                              mldata['target'].T, mldata['double3'].T))
+            target = openml['class'].reshape(-1,1)
+            data = np.hstack((openml['int2'].T, openml['data'],
+                              openml['target'].T, openml['double3'].T))
         elif name=='vowel':
-            target = mldata['Class'].T
+            target = openml['Class'].T
             # We are not using the extra features implicit in the dataset:
             # target: {training, test}
             # data: Name of the participant
             # sex: sex of the participant
-            data = mldata['double0'].T
+            data = openml['double0'].T
         elif name=='zoo':
-            target = mldata['type'].reshape(-1,1)
+            target = openml['type'].reshape(-1,1)
             feature_names = ['aquatic', 'domestic', 'eggs', 'backbone',
                              'feathers', 'data', 'milk', 'tail',
                              'airborne', 'toothed', 'catsize', 'venomous',
                              'fins', 'predator', 'breathes']
             data = np.hstack([
-                    self.nominal_to_float(mldata[f_name].reshape(-1,1))
+                    self.nominal_to_float(openml[f_name].reshape(-1,1))
                         for f_name in feature_names])
-            data = np.hstack((data, mldata['int0'].T))
+            data = np.hstack((data, openml['int0'].T))
         elif name=='abalone':
-            target = mldata.target
-            data = np.hstack((mldata['data'], mldata['int1'].T))
+            target = openml.target
+            data = np.hstack((openml['data'], openml['int1'].T))
         elif name=='balance-scale':
-            target = mldata.data
-            data = mldata.target.T
+            target = openml.data
+            data = openml.target.T
         elif name=='credit-approval':
-            target = mldata['class'].T
-            data = self.mldata_to_numeric_matrix(mldata, 690,
+            target = openml['class'].T
+            data = self.openml_to_numeric_matrix(openml, 690,
                                                  exclude=['class'])
             data, target = self.remove_rows_with_missing_values(data, target)
         elif name=='hepatitis':
-            target = mldata['Class'].T
-            data = self.mldata_to_numeric_matrix(mldata, 155,
+            target = openml['Class'].T
+            data = self.openml_to_numeric_matrix(openml, 155,
                                                  exclude=['Class'])
             data = self.substitute_missing_values(data, column_mean=True)
         elif name=='lung-cancer':
-            target = mldata['Class'].T
-            data = self.mldata_to_numeric_matrix(mldata, 96,
+            target = openml['Class'].T
+            data = self.openml_to_numeric_matrix(openml, 96,
                                                  exclude=['Class'])
         else:
             try:
-                data = mldata.data
-                target = mldata.target
+                data = openml.data
+                target = openml.target
             except Exception:
             #from IPython import embed
             #embed()
@@ -539,23 +540,23 @@ class Data(object):
 
         return Dataset(name, data, target)
 
-    def mldata_to_numeric_matrix(self, mldata, n_samples, exclude=[]):
-        """converts an mldata object into a matrix
+    def openml_to_numeric_matrix(self, openml, n_samples, exclude=[]):
+        """converts an openml object into a matrix
 
-        for each value in the mldata dictionary it is reshaped to contain the
+        for each value in the openml dictionary it is reshaped to contain the
         first dimension as a number of samples and the second as number of
         features. If the value contains numerical data it is not preprocessed.
         If the value contains any other type np.object_ it is transformed to
         numerical and all the missing values marked with '?' or 'nan' are
         substituted by np.nan.
         Args:
-            mldata (dictionary with some numpy.array): feature strings.
+            openml (dictionary with some numpy.array): feature strings.
 
         Returns:
             (array-like, shape = [n_samples, n_features]): floats.
         """
         first_column = True
-        for key, submatrix in mldata.items():
+        for key, submatrix in openml.items():
             if key not in exclude and type(submatrix) == np.ndarray:
                 new_submatrix = np.copy(submatrix)
 
@@ -705,7 +706,7 @@ def test():
             print("{}. {}  Not Available yet".format(i+1, name))
 
 
-class MLData(Data):
+class openml(Data):
     def __init__(self, data_home='./datasets/', load_all=False):
         warnings.simplefilter('always', DeprecationWarning)
         warnings.warn(('This Class is going to be deprecated in a future '
@@ -715,7 +716,7 @@ class MLData(Data):
         self.datasets = {}
 
         if load_all:
-            for key in MLData.mldata_names.keys():
+            for key in openml.openml_names.keys():
                 self.datasets[key] = self.get_dataset(key)
 
 

@@ -1,4 +1,4 @@
-from version import __version__
+from .version import __version__
 
 __author__ = "Miquel Perello Nieto"
 __credits__ = ["Miquel Perello Nieto"]

@@ -1,5 +1,5 @@
 from pydatasets.datasets import Data
 
-name = 'turnout'
+name = 'ecoli'
 data = Data(dataset_names=[name])
 print(data.datasets[name])
