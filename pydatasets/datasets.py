@@ -53,10 +53,28 @@ datasets_non_binary = [d for d in datasets_all if d not in datasets_binary]
 class Dataset(object):
     def __init__(self, name, data, target, feature_names=None,
                  shuffle=False, random_state=None):
+        '''
+        Parameters
+        ==========
+        data: numpy array or DataFrame (n_samples, n_features)
+            If it is a DataFrame, the feature names are extracted from the
+            column names.
+        target: numpy array or DataFrame (n_samples, n_classes) or (n_samples, 1)
+            if size is (n_samples, n_classes) can be multiclass or multi-label
+            if size is (n_samples, 1) is assumed to be multiclass problem
+            If it is a DataFrame with multiple columns, the target names is
+            extracted from the column names.
+        '''
         self.name = name
+
         if feature_names is None:
-            feature_names = range(len(data[0]))
+            if hasattr(data, 'columns'):
+                feature_names = data.columns.values
+            else:
+                feature_names = range(len(data[0]))
+
         self.feature_names = feature_names
+
         self._data = self.standardize_data(data)
         self._target, self._classes, self._names, self._counts = self.standardize_targets(target)
         if shuffle:
@@ -74,12 +92,28 @@ class Dataset(object):
         return (new_data-data_mean)/data_std
 
     def standardize_targets(self, target):
+        '''
+
+        target: numpy array or DataFrame (n_samples, 1) or (n_samples, n_classes)
+            If it is a DataFrame with multiple columns, the target names are
+            obtained from the column names.
+            If there is only one column, the target names are obtained from the
+            values in each row.
+        '''
         target = np.squeeze(target)
-        names, counts = np.unique(target, return_counts=True)
-        new_target = np.empty_like(target, dtype=int)
-        for i, name in enumerate(names):
-            new_target[target==name] = i
-        classes = range(len(names))
+
+        if ((len(target.shape) > 1)
+            and (target.shape[1] > 1)
+            and hasattr(target, 'columns')):
+            names = target.columns
+            counts = np.sum(target, axis=0).values
+            new_target = target.astype(int).values
+        else:
+            names, counts = np.unique(target, return_counts=True)
+            new_target = np.zeros_like(target, dtype=int)
+            for i, name in enumerate(names):
+                new_target[target==name] = i
+        classes = list(range(len(names)))
         if type(names[0]) is np.ndarray:
             names = [''.join(name) for name in names]
         else:
@@ -100,6 +134,31 @@ class Dataset(object):
         train_idx, test_idx = next(iter(skf.split(X=self._data,
                                                   y=self._target)))
         self._data, self._target = self._data[test_idx], self._target[test_idx]
+
+    @property
+    def is_semisupervised(self):
+        '''
+        Indicates if the target of any instance does not belong to at least one
+        class. Assumes that a target of the shape (n_samples, 1) is always
+        fully supervised, while a target of shape (n_samples, n_classes) can be
+        unsupervised if the full row contains zeros.
+        '''
+        if (len(self._target.shape) > 1)  and (self._target.shape[1] > 1):
+            return np.any(np.sum(self._target, axis=1) == 0)
+        return False
+
+    @property
+    def is_multilabel(self):
+        '''
+        Indicates if the target of any instance has more than one class
+        assignation. If the target is of the shape (n_samples, 1) it is assumed
+        not to be a multilabel problem. If the target is of the shape
+        (n_samples, n_classes) it is considered multilabel if at least one of
+        the rows contains more than one one.
+        '''
+        if (len(self._target.shape) > 1) and (self._target.shape[1] > 1):
+            return np.any(np.sum(self._target, axis=1) > 1)
+        return False
 
     @property
     def target(self):
@@ -140,17 +199,45 @@ class Dataset(object):
     def n_samples(self):
         return self._data.shape[0]
 
+    @property
+    def label_cardinality(self):
+        if self.is_multilabel:
+            return np.mean(np.sum(self._target, axis=1))
+        return 1
+
+    @property
+    def label_density(self):
+        return self.label_cardinality / self.n_classes
+
+    @property
+    def label_diversity(self):
+        return len(np.unique(self._target, axis=0))
+
     def __str__(self):
         return("Name = {}\n"
+               "Is semisupervised = {}\n"
+               "Is multilabel = {}\n"
                "Data shape = {}\n"
                "Feature names = {}\n"
                "Target shape = {}\n"
                "Target classes = {}\n"
                "Target labels = {}\n"
-               "Target counts = {}").format(self.name, self.data.shape,
-                                            self.feature_names,
-                                            self.target.shape, self.classes,
-                                            self.names, self.counts)
+               "Target counts = {}\n"
+               "Label cardinality = {}\n"
+               "Label density = {}\n"
+               "Label diversity = {}\n"
+              ).format(self.name,
+                       self.is_semisupervised,
+                       self.is_multilabel,
+                       self.data.shape,
+                       self.feature_names,
+                       self._target.shape,
+                       self.classes,
+                       self.names,
+                       self.counts,
+                       self.label_cardinality,
+                       self.label_density,
+                       self.label_diversity)
 
 
 class Data(object):
@@ -158,11 +245,14 @@ class Data(object):
     # TODO mldata is not working anymore, I need to change each of this calls
     # to download it from a copy in my repo with loadmat('sonar.mat')
     pydataset_names = ['iris', 'aids', 'turnout']
-    
+
     pydataset_not_working = ['diabetes']
 
     openml_names = {
                     'ecoli':'ecoli',
+                    'birds': 'birds',
+                    'enron': 'enron',
+                    'emotions': 'emotions'
                     }
 
     openml_not_working = {
@@ -180,7 +270,7 @@ class Data(object):
                     # HTTP Error 500 in mldata.org
                     'satimage':'satimage',
                     'nursery':'uci-20070111 nursery',
-                    'hypothyroid':'uci-20070111 hypothyroid'
+                    'hypothyroid':'uci-20070111 hypothyroid',
                     'glass':'glass',
                     'heart-statlog':'datasets-UCI heart-statlog',
                     'ionosphere':'ionosphere',
@@ -389,8 +479,17 @@ class Data(object):
         #data, target = MAPPING[name](openml)
 
         if name=='ecoli':
-            data = openml.data.values
+            data = openml.data
             target = openml.target
+        elif name=='birds':
+            data = openml.data
+            target = openml.target == 'TRUE'
+        elif name=='enron':
+            data = openml.data
+            target = openml.target == 'TRUE'
+        elif name=='emotions':
+            data = openml.data
+            target = openml.target == 'TRUE'
         elif name=='diabetes':
             data = openml.data
             target = openml.target
@@ -533,9 +632,8 @@ class Data(object):
             try:
                 data = openml.data
                 target = openml.target
-            except Exception:
-            #from IPython import embed
-            #embed()
+            except Exception as e:
+                print(e)
                 return None
 
         return Dataset(name, data, target)
