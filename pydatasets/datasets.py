@@ -1,5 +1,6 @@
 __docformat__ = 'restructedtext en'
 import warnings
+import json
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import StratifiedKFold
 from sklearn.utils import shuffle as skl_shuffle
@@ -218,31 +219,24 @@ class Dataset(object):
     def label_diversity(self):
         return len(np.unique(self._target, axis=0))
 
+    @property
+    def all_attributes(self):
+        return {"Name": self.name,
+                "Is semisupervised": self.is_semisupervised,
+                "Is multilabel": self.is_multilabel,
+                "Datashape": self.data.shape,
+                "Feature names": self.feature_names,
+                "Target shape": self._target.shape,
+                "Target classes": self.classes,
+                "Target labels": self.names,
+                "Target counts": self.counts,
+                "Label cardinality": self.label_cardinality,
+                "Label density": self.label_density,
+                "Label diversity": self.label_diversity}
+
     def __str__(self):
-        return("Name = {}\n"
-               "Is semisupervised = {}\n"
-               "Is multilabel = {}\n"
-               "Data shape = {}\n"
-               "Feature names = {}\n"
-               "Target shape = {}\n"
-               "Target classes = {}\n"
-               "Target labels = {}\n"
-               "Target counts = {}\n"
-               "Label cardinality = {}\n"
-               "Label density = {}\n"
-               "Label diversity = {}\n"
-              ).format(self.name,
-                       self.is_semisupervised,
-                       self.is_multilabel,
-                       self.data.shape,
-                       self.feature_names,
-                       self._target.shape,
-                       self.classes,
-                       self.names,
-                       self.counts,
-                       self.label_cardinality,
-                       self.label_density,
-                       self.label_diversity)
+        return "\n".join('{} = {}'.format(key, value) for key, value in
+                         self.all_attributes.items())
 
 
 from .synthetic.fruits import get_fruits
