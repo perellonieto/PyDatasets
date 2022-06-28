@@ -7,4 +7,3 @@ __license__ = "GPL"
 __maintainer__ = "Miquel Perello Nieto"
 __email__ = "miquel@perellonieto.com"
 __status__ = "Development"
-

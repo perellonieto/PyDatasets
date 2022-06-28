@@ -10,6 +10,9 @@ from pydataset import data as pydataset_data
 import urllib
 from os.path import isfile
 
+
+#from .synthetic.fruits import get_fruits
+
 datasets_binary = ['credit-approval', 'diabetes',
             'german', 'heart-statlog', 'hepatitis',
             'horse', 'ionosphere', 'lung-cancer',
@@ -44,6 +47,8 @@ datasets_big = ['abalone', 'car', 'flare', 'german', 'landsat-satellite',
                 'spambase', 'waveform-5000', 'yeast']
 
 datasets_small_example = ['iris', 'spambase', 'autos']
+
+datasets_multilabel = ['birds', 'enron', 'emotions', 'fruits']
 
 datasets_all = list(set(datasets_li2014 + datasets_hempstalk2008 +
                         datasets_others + datasets_binary))
@@ -240,6 +245,10 @@ class Dataset(object):
                        self.label_diversity)
 
 
+from .synthetic.fruits import get_fruits
+
+datasets_synthetic = {'fruits': get_fruits()}
+
 class Data(object):
     uci_nan = -2147483648
     # TODO mldata is not working anymore, I need to change each of this calls
@@ -348,6 +357,8 @@ class Data(object):
             return self.get_openml_dataset(name)
         elif name in Data.pydataset_names:
             return self.get_pydataset_dataset(name)
+        elif name in datasets_synthetic.keys():
+            return datasets_synthetic[name]
         elif name == 'spambase':
             file_path = self.data_home+'spambase.data'
             url = "https://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data"
@@ -816,7 +827,6 @@ class openml(Data):
         if load_all:
             for key in openml.openml_names.keys():
                 self.datasets[key] = self.get_dataset(key)
-
 
 if __name__=='__main__':
     test()
