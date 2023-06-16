@@ -255,7 +255,12 @@ class Data(object):
                     'ecoli':'ecoli',
                     'birds': 'birds',
                     'enron': 'enron',
-                    'emotions': 'emotions'
+                    'emotions': 'emotions',
+                    'scene': 'scene',
+                    'yeast': 'yeast',
+                    'reuters': 'reuters',
+                    'slashdot': 'slashdot',
+                    'image': 'image'
                     }
 
     openml_not_working = {
