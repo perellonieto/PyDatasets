@@ -1,6 +1,7 @@
 __docformat__ = 'restructedtext en'
 import warnings
 import json
+#import openml
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import StratifiedKFold
 from sklearn.utils import shuffle as skl_shuffle
@@ -49,7 +50,8 @@ datasets_big = ['abalone', 'car', 'flare', 'german', 'landsat-satellite',
 
 datasets_small_example = ['iris', 'spambase', 'autos']
 
-datasets_multilabel = ['birds', 'enron', 'emotions', 'fruits']
+datasets_multilabel = ['birds', 'enron', 'emotions', 'fruits', 'scene',
+                       'yeast', 'reuters', 'genbase', 'slashdot', 'image']
 
 datasets_all = list(set(datasets_li2014 + datasets_hempstalk2008 +
                         datasets_others + datasets_binary))
@@ -260,7 +262,9 @@ class Data(object):
                     'yeast': 'yeast',
                     'reuters': 'reuters',
                     'slashdot': 'slashdot',
-                    'image': 'image'
+                    'image': 'image',
+                    'genbase': 'genbase',
+                    'langlog': 'langlog'
                     }
 
     openml_not_working = {
@@ -470,7 +474,12 @@ class Data(object):
 
     def get_openml_dataset(self, name):
         try:
-            openml = fetch_openml(Data.openml_names[name], data_home=self.data_home)
+            openml = fetch_openml(Data.openml_names[name],
+                                  data_home=self.data_home)
+            #dataset = openml.datasets.get_dataset(Data.openml_names[name],
+            #                                     data_home=self.data_home)
+            #data, target, _, _ = dataset.get_data(dataset_format="dataframe")
+            #return Dataset(name, data, target)
         except Exception as e:
             print(e)
             return None
@@ -492,6 +501,9 @@ class Data(object):
             data = openml.data
             target = openml.target
         elif name=='birds':
+            data = openml.data
+            target = openml.target == 'TRUE'
+        elif name=='langlog':
             data = openml.data
             target = openml.target == 'TRUE'
         elif name=='enron':
@@ -528,6 +540,9 @@ class Data(object):
             data = openml.data
             target = openml.target.toarray()
             target = target.transpose()[:,4]
+        elif name=='genbase':
+            data = openml.data
+            target = openml.target.values
         elif name=='tic-tac':
             n = np.alen(openml.data)
             data = np.hstack((openml.data.reshape(n,1),
@@ -638,6 +653,19 @@ class Data(object):
             target = openml['Class'].T
             data = self.openml_to_numeric_matrix(openml, 96,
                                                  exclude=['Class'])
+        elif name=='reuters':
+            target = openml['target'] == 'TRUE'
+            data = openml['data']
+        elif name=='image':
+            target = openml['target'] == 'TRUE'
+            data = openml['data']
+        elif name=='genbase':
+            # FIXME returning a ValueError
+            target = openml['target'] == 'TRUE'
+            data = openml['data']
+        elif name=='slashdot':
+            target = openml['target'] == 'TRUE'
+            data = openml['data']
         else:
             try:
                 data = openml.data
@@ -814,18 +842,18 @@ def test():
             print("{}. {}  Not Available yet".format(i+1, name))
 
 
-class openml(Data):
-    def __init__(self, data_home='./datasets/', load_all=False):
-        warnings.simplefilter('always', DeprecationWarning)
-        warnings.warn(('This Class is going to be deprecated in a future '
-                       'version, please use cwc.data_wrappers.Data instead.'),
-                      DeprecationWarning)
-        self.data_home = data_home
-        self.datasets = {}
-
-        if load_all:
-            for key in openml.openml_names.keys():
-                self.datasets[key] = self.get_dataset(key)
+#class openml(Data):
+#    def __init__(self, data_home='./datasets/', load_all=False):
+#        warnings.simplefilter('always', DeprecationWarning)
+#        warnings.warn(('This Class is going to be deprecated in a future '
+#                       'version, please use cwc.data_wrappers.Data instead.'),
+#                      DeprecationWarning)
+#        self.data_home = data_home
+#        self.datasets = {}
+#
+#        if load_all:
+#            for key in openml.openml_names.keys():
+#                self.datasets[key] = self.get_dataset(key)
 
 if __name__=='__main__':
     test()
