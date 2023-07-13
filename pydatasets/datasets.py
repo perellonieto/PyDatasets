@@ -51,7 +51,8 @@ datasets_big = ['abalone', 'car', 'flare', 'german', 'landsat-satellite',
 datasets_small_example = ['iris', 'spambase', 'autos']
 
 datasets_multilabel = ['birds', 'enron', 'emotions', 'fruits', 'scene',
-                       'yeast', 'reuters', 'genbase', 'slashdot', 'image']
+                       'yeast', 'reuters', 'genbase', 'slashdot', 'image',
+                       'sklearn-multilabel', 'mlgaussians']
 
 datasets_all = list(set(datasets_li2014 + datasets_hempstalk2008 +
                         datasets_others + datasets_binary))
@@ -109,13 +110,16 @@ class Dataset(object):
             values in each row.
         '''
         target = np.squeeze(target)
-
         if ((len(target.shape) > 1)
-            and (target.shape[1] > 1)
-            and hasattr(target, 'columns')):
-            names = target.columns
-            counts = np.sum(target, axis=0).values
-            new_target = target.astype(int).values
+            and (target.shape[1] > 1)):
+            if hasattr(target, 'columns'):
+                names = target.columns
+                counts = np.sum(target, axis=0).values
+                new_target = target.astype(int).values
+            else:
+                names = list(range(target.shape[1]))
+                counts = np.sum(target, axis=0)
+                new_target = target.astype(int)
         else:
             names, counts = np.unique(target, return_counts=True)
             new_target = np.zeros_like(target, dtype=int)
@@ -242,8 +246,12 @@ class Dataset(object):
 
 
 from .synthetic.fruits import get_fruits
+from .synthetic.sklearnmultilabel import get_sklearn_multilabel
+from .synthetic.mlgaussians import get_mlgaussians
 
-datasets_synthetic = {'fruits': get_fruits()}
+datasets_synthetic = {'fruits': get_fruits,
+                      'sklearn-multilabel': get_sklearn_multilabel,
+                      'mlgaussians': get_mlgaussians}
 
 class Data(object):
     uci_nan = -2147483648
@@ -361,7 +369,7 @@ class Data(object):
         elif name in Data.pydataset_names:
             return self.get_pydataset_dataset(name)
         elif name in datasets_synthetic.keys():
-            return datasets_synthetic[name]
+            return datasets_synthetic[name]()
         elif name == 'spambase':
             file_path = self.data_home+'spambase.data'
             url = "https://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data"
