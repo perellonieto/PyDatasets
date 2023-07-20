@@ -20,6 +20,8 @@ class fruit_and_insect_generator(object):
         x = np.clip(x, 0.1, None)
         q_x = self.insect_gen.pdf(x) / self.insect_gen.pdf(self.insect_gen.mean)
         p_insect = (1 - q_x)*self.mu0 + q_x*self.mu1
+        if self.random_state is None:
+            self.random_state = np.random.get_state()[1][0]
         with temp_seed(self.random_state + self.repetition):
             insects = np.random.binomial(1, p_insect).astype(bool)
             self.repetition += 1

@@ -18,6 +18,8 @@ class dependent_gaussians_generator(object):
         x = self.g1_gen.rvs(n_samples)
         q_x = self.g2_gen.pdf(x) / self.g2_gen.pdf(self.g2_gen.mean)
         p_g2 = (1 - q_x)*self.mu0 + q_x*self.mu1
+        if self.random_state is None:
+            self.random_state = np.random.get_state()[1][0]
         with temp_seed(self.random_state + self.repetition):
             g2s = np.random.binomial(1, p_g2).astype(bool)
             self.repetition += 1
