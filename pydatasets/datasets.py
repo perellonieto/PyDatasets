@@ -84,12 +84,14 @@ class Dataset(object):
 
         self.feature_names = feature_names
 
+        self.shuffle = shuffle
+        self.random_state = random_state
         self._data = self.standardize_data(data)
         self._target, self._classes, self._names, self._counts = self.standardize_targets(target)
         if shuffle:
-            self.shuffle(random_state=random_state)
+            self._shuffle(random_state=random_state)
 
-    def shuffle(self, random_state=None):
+    def _shuffle(self, random_state=None):
         self._data, self._target = skl_shuffle(self._data, self._target,
                                                random_state=random_state)
 
@@ -238,7 +240,9 @@ class Dataset(object):
                 "Target counts": self.counts,
                 "Label cardinality": self.label_cardinality,
                 "Label density": self.label_density,
-                "Label diversity": self.label_diversity}
+                "Label diversity": self.label_diversity,
+                "Random state": self.random_state,
+                "Shuffle": self.shuffle}
 
     def __str__(self):
         return "\n".join('{} = {}'.format(key, value) for key, value in
@@ -328,23 +332,25 @@ class Data(object):
                  load_all=False, shuffle=True, random_state=None):
         self.data_home = data_home
         self.datasets = {}
+        self.random_state = random_state
+        self.shuffle = shuffle
 
         if load_all:
             dataset_names = Data.openml_names.keys()
-            self.load_datasets_by_name(dataset_names)
+            self.load_datasets_by_name(dataset_names, shuffle=shuffle, random_state=random_state)
         elif dataset_names is not None:
-            self.load_datasets_by_name(dataset_names)
+            self.load_datasets_by_name(dataset_names, shuffle=shuffle, random_state=random_state)
 
         if shuffle:
             for name in self.datasets.keys():
-                self.datasets[name].shuffle(random_state=random_state)
+                self.datasets[name]._shuffle(random_state=random_state)
 
 
-    def load_datasets_by_name(self, names):
+    def load_datasets_by_name(self, names, shuffle=False, random_state=None):
         for name in names:
-            dataset = self.get_dataset_by_name(name)
+            dataset = self.get_dataset_by_name(name, shuffle=shuffle, random_state=random_state)
             if dataset is not None:
-                self.datasets[name] = self.get_dataset_by_name(name)
+                self.datasets[name] = dataset
             else:
                 warnings.simplefilter('always', UserWarning)
                 warnings.warn(("Dataset '{}' not currently available.".format(name)),
@@ -363,13 +369,13 @@ class Data(object):
             content = self.download_file_content(url)
             self.save_file_content(file_path, content)
 
-    def get_dataset_by_name(self, name):
+    def get_dataset_by_name(self, name, shuffle=False, random_state=None):
         if name in Data.openml_names.keys():
             return self.get_openml_dataset(name)
         elif name in Data.pydataset_names:
             return self.get_pydataset_dataset(name)
         elif name in datasets_synthetic.keys():
-            return datasets_synthetic[name]()
+            return datasets_synthetic[name](random_state=random_state)
         elif name == 'spambase':
             file_path = self.data_home+'spambase.data'
             url = "https://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data"
@@ -450,7 +456,7 @@ class Data(object):
             data, target = self.remove_rows_with_missing_values(data, target)
         else:
             return None
-        return Dataset(name, data, target)
+        return Dataset(name, data, target, random_state=random_state)
 
     def get_pydataset_dataset(self, name):
         try:
