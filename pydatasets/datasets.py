@@ -252,10 +252,12 @@ class Dataset(object):
 from .synthetic.fruits import get_fruits
 from .synthetic.sklearnmultilabel import get_sklearn_multilabel
 from .synthetic.mlgaussians import get_mlgaussians
+from .synthetic.two_gaussians import get_two_gaussians
 
 datasets_synthetic = {'fruits': get_fruits,
                       'sklearn-multilabel': get_sklearn_multilabel,
-                      'mlgaussians': get_mlgaussians}
+                      'mlgaussians': get_mlgaussians,
+                      'twogaussians': get_two_gaussians}
 
 class Data(object):
     uci_nan = -2147483648
