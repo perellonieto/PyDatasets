@@ -7,6 +7,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.utils import shuffle as skl_shuffle
 import numpy as np
 
+from ._yeast_multilabel import load_yeast
 from pydataset import data as pydataset_data
 
 import urllib
@@ -267,6 +268,7 @@ class Data(object):
 
     pydataset_not_working = ['diabetes']
 
+    function_names = {'yeast-ml': load_yeast}
     openml_names = {
                     'ecoli':'ecoli',
                     'birds': 'birds',
@@ -372,7 +374,10 @@ class Data(object):
             self.save_file_content(file_path, content)
 
     def get_dataset_by_name(self, name, shuffle=False, random_state=None):
-        if name in Data.openml_names.keys():
+        if name in Data.function_names.keys():
+            return Data.function_names[name](shuffle=shuffle,
+                                             random_state=random_state)
+        elif name in Data.openml_names.keys():
             return self.get_openml_dataset(name)
         elif name in Data.pydataset_names:
             return self.get_pydataset_dataset(name)
