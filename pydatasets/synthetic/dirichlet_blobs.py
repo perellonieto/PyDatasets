@@ -5,7 +5,6 @@ import scipy.stats as stats
 
 
 def load_blob(n_sample, n_label):
-    print("Deprecated. Import with from multicalpy.datasets import load_blob")
     L = 2 ** n_label
     pi_power = stats.dirichlet.rvs(np.ones(L)).reshape((2,) * n_label)
     pi = pi_power.reshape((2,) * n_label)
